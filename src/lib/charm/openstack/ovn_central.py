@@ -38,6 +38,9 @@ charms_openstack.charm.use_defaults('charm.default-select-release')
 PEER_RELATION = 'ovsdb-peer'
 CERT_RELATION = 'certificates'
 
+NAGIOS_PLUGINS = '/usr/local/lib/nagios/plugins'
+SCRIPTS_DIR = '/usr/local/bin'
+
 
 # NOTE(fnordahl): We should split the ``OVNConfigurationAdapter`` in
 # ``layer-ovn`` into common and chassis specific parts so we can re-use the
@@ -661,8 +664,27 @@ class BaseOVNCentralCharm(charms_openstack.charm.OpenStackCharm):
         hostname = nrpe.get_nagios_hostname()
         current_unit = nrpe.get_nagios_unit_name()
         charm_nrpe = nrpe.NRPE(hostname=hostname)
-        nrpe.add_init_service_checks(
-            charm_nrpe, self.nrpe_check_services, current_unit)
+        nrpe.add_init_service_checks(charm_nrpe,
+                                     self.nrpe_check_services,
+                                     current_unit)
+
+        nrpe_files_path = os.path.join(ch_core.hookenv.charm_dir(), "files")
+        nrpe.copy_nrpe_checks(nrpe_files_dir=nrpe_files_path)
+
+        cron_script = os.path.join(ch_core.hookenv.charm_dir(), "files",
+                                   "run_ovn_db_connections_check.py")
+        ch_core.host.rsync(cron_script, SCRIPTS_DIR,
+                           options=["--executability"])
+        cron_file = "/etc/cron.d/check_ovn_db_connections"
+        cron_cmd = os.path.join(SCRIPTS_DIR, "run_ovn_db_connections_check.py")
+        cron_line = "*/5 * * * * root {}".format(cron_cmd)
+        with open(cron_file, "w") as fd:
+            fd.write("# Juju generated - DO NOT EDIT\n{}\n\n"
+                     .format(cron_line))
+
+        charm_nrpe.add_check(shortname="ovn_db_connections",
+                             description="Check OVN DB connections",
+                             check_cmd="check_ovn_db_connections.py")
         charm_nrpe.write()
 
     def custom_assess_status_check(self):
