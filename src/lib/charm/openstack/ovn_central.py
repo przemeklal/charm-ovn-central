@@ -687,6 +687,25 @@ class BaseOVNCentralCharm(charms_openstack.charm.OpenStackCharm):
                              check_cmd="check_ovn_db_connections.py")
         charm_nrpe.write()
 
+    def remove_nrpe(self):
+        """Remove no longer needed NRPE configuration and cronfiles"""
+        hostname = nrpe.get_nagios_hostname()
+        charm_nrpe = nrpe.NRPE(hostname=hostname)
+
+        for svc in self.nrpe_check_services:
+            charm_nrpe.remove_check(shortname=svc)
+        charm_nrpe.remove_check(shortname="ovn_db_connections")
+
+        charm_nrpe.write()
+
+        files = [
+            "/etc/cron.d/check_ovn_db_connections",
+            os.path.join(SCRIPTS_DIR, "run_ovn_db_connections_check.py"),
+        ]
+        for filename in files:
+            if os.path.exists(filename):
+                os.unlink(filename)
+
     def custom_assess_status_check(self):
         """Report deferred events in charm status message."""
         state = None
