@@ -16,6 +16,7 @@ import sys
 
 sys.path.append('src')
 sys.path.append('src/lib')
+sys.path.append('src/files')
 
 # Mock out charmhelpers so that we can test without it.
 import charms_openstack.test_mocks  # noqa
