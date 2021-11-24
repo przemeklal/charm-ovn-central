@@ -32,40 +32,44 @@ Alert = namedtuple("Alert", "status msg")
 
 
 def get_uuid(connection):
+    """Retreive UUID from OVN DB connection JSON."""
     return connection["_uuid"][1]
 
 
 def check_role_target(connection):
+    """Validate OVN connection target and role fields."""
     uuid = get_uuid(connection)
 
     if connection["target"] not in ["pssl:6642", "pssl:16642"]:
-        msg = "{}: unexpected target: {}".format(uuid, connection["target"])
-        return Alert(NAGIOS_STATUS_CRITICAL, msg)
+        return Alert(
+            NAGIOS_STATUS_CRITICAL,
+            "{}: unexpected target: {}".format(uuid, connection["target"]),
+        )
 
     if connection["role"] not in ["ovn-controller", ""]:
-        msg = "{}: unexpected role: {}".format(uuid, connection["role"])
-        return Alert(NAGIOS_STATUS_CRITICAL, msg)
+        return Alert(
+            NAGIOS_STATUS_CRITICAL,
+            "{}: unexpected role: {}".format(uuid, connection["role"]),
+        )
 
-    if connection["target"] == "pssl:6642":
-        if connection["role"] == "ovn-controller":
-            msg = "{}: role ovn-controller uses target pssl:6642".format(uuid)
-            return Alert(NAGIOS_STATUS_OK, msg)
-        elif connection["role"] == "":
-            msg = "{}: RBAC is disabled".format(uuid)
-            return Alert(NAGIOS_STATUS_WARNING, msg)
+    if connection["target"] == "pssl:6642" and connection["role"] == "":
+        return Alert(
+            NAGIOS_STATUS_WARNING, "{}: RBAC is disabled".format(uuid)
+        )
 
-    elif connection["target"] == "pssl:16642":
-        if connection["role"] == "":
-            msg = '{}: role "" uses target pssl:16642'.format(uuid)
-            return Alert(NAGIOS_STATUS_OK, msg)
-        else:
-            msg = "{}: target pssl:16642 should not be used by role {}".format(
+    if connection["target"] == "pssl:16642" and connection["role"] != "":
+        return Alert(
+            NAGIOS_STATUS_CRITICAL,
+            "{}: target pssl:16642 should not be used by role {}".format(
                 uuid, connection["role"]
-            )
-            return Alert(NAGIOS_STATUS_CRITICAL, msg)
+            ),
+        )
+
+    return Alert(NAGIOS_STATUS_OK, "{}: no issues".format(uuid))
 
 
 def check_read_only(connection):
+    """Ensure that OVN DB connection isn't in read_only state."""
     uuid = get_uuid(connection)
     if connection["read_only"] is not False:
         return Alert(
@@ -77,6 +81,7 @@ def check_read_only(connection):
 
 
 def check_connections(connections):
+    """Run checks against OVN DB connections."""
     alerts = []
     controllers_count = 0
 
@@ -84,9 +89,7 @@ def check_connections(connections):
         alerts.append(
             Alert(
                 NAGIOS_STATUS_CRITICAL,
-                "expected 2 ovn-sb connections, got {}".format(
-                    len(connections)
-                ),
+                "expected 2 connections, got {}".format(len(connections)),
             )
         )
 
@@ -111,29 +114,33 @@ def check_connections(connections):
 
 
 def parse_output(raw):
+    """Parses output of ovnsb-ctl"""
     status = json.loads(raw)
     data = status["data"]
     headings = status["headings"]
     connections = []
-    for d in data:
-        connections.append(dict(zip(headings, d)))
-    return check_connections(connections)
+    for connection_data in data:
+        connections.append(dict(zip(headings, connection_data)))
+    return connections
 
 
 def write_output_file(output):
     """Write results of checks to the defined location for nagios to check."""
     try:
-        with open(TMP_OUTPUT_FILE, "w") as fd:
-            fd.write(output)
-    except IOError as e:
+        with open(TMP_OUTPUT_FILE, "w") as output_file:
+            output_file.write(output)
+    except IOError as err:
         print(
-            "Cannot write output file {}, error {}".format(TMP_OUTPUT_FILE, e)
+            "Cannot write output file {}, error {}".format(
+                TMP_OUTPUT_FILE, err
+            )
         )
         sys.exit(1)
     os.rename(TMP_OUTPUT_FILE, OUTPUT_FILE)
 
 
 def is_leader():
+    """Check whether the current unit is OVN Southbound DB leader."""
     cmd = [
         "ovs-appctl",
         "-t",
@@ -149,16 +156,14 @@ def is_leader():
     if len(role_line) > 0:
         _, role = role_line[0].split(":")
         return role.strip() == "leader"
-    else:
-        print(
-            "'Role:' line not found in the output of '{}'".format(
-                " ".join(cmd)
-            )
-        )
-        return False
+
+    print("'Role:' line not found in the output of '{}'".format(" ".join(cmd)))
+    return False
 
 
 def aggregate_alerts(alerts):
+    """Reduce results down to an overall single status based on the highest
+    level."""
     total_crit = 0
     total_warn = 0
 
@@ -166,15 +171,15 @@ def aggregate_alerts(alerts):
     msg_warn = []
     msg_ok = []
 
-    for a in alerts:
-        if a.status == NAGIOS_STATUS_CRITICAL:
+    for alert in alerts:
+        if alert.status == NAGIOS_STATUS_CRITICAL:
             total_crit += 1
-            msg_crit.append(a.msg)
-        elif a.status == NAGIOS_STATUS_WARNING:
+            msg_crit.append(alert.msg)
+        elif alert.status == NAGIOS_STATUS_WARNING:
             total_warn += 1
-            msg_warn.append(a.msg)
+            msg_warn.append(alert.msg)
         else:
-            msg_ok.append(a.msg)
+            msg_ok.append(alert.msg)
 
     severity = "OK"
     status_detail = ""
@@ -197,15 +202,17 @@ def aggregate_alerts(alerts):
 
 
 def run_checks():
+    """Check health of OVN SB DB connections."""
     output = "UNKNOWN"
     try:
         if is_leader():
             cmd = ["ovn-sbctl", "--format=json", "list", "connection"]
             cmd_output = check_output(cmd).decode("utf-8")
-            alerts = parse_output(cmd_output)
+            connections = parse_output(cmd_output)
+            alerts = check_connections(connections)
             output = aggregate_alerts(alerts)
         else:
-            output = "no-op (unit is not the DB leader)"
+            output = "noop: unit is not the DB leader"
     except CalledProcessError as error:
         output = "UKNOWN: {}".format(error.stdout.decode(errors="ignore"))
 

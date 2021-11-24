@@ -38,8 +38,9 @@ charms_openstack.charm.use_defaults('charm.default-select-release')
 PEER_RELATION = 'ovsdb-peer'
 CERT_RELATION = 'certificates'
 
-NAGIOS_PLUGINS = '/usr/local/lib/nagios/plugins'
+NAGIOS_PLUGINS_PATH = '/usr/local/lib/nagios/plugins'
 SCRIPTS_DIR = '/usr/local/bin'
+NRPE_CRON_FILE = '/etc/cron.d/check_ovn_db_connections'
 
 
 # NOTE(fnordahl): We should split the ``OVNConfigurationAdapter`` in
@@ -675,10 +676,11 @@ class BaseOVNCentralCharm(charms_openstack.charm.OpenStackCharm):
                                    "run_ovn_db_connections_check.py")
         ch_core.host.rsync(cron_script, SCRIPTS_DIR,
                            options=["--executability"])
-        cron_file = "/etc/cron.d/check_ovn_db_connections"
         cron_cmd = os.path.join(SCRIPTS_DIR, "run_ovn_db_connections_check.py")
-        cron_line = "*/5 * * * * root {}".format(cron_cmd)
-        with open(cron_file, "w") as fd:
+        cron_line = "*/5 * * * * root {} | logger -p local0.notice".format(
+            cron_cmd
+        )
+        with open(NRPE_CRON_FILE, "w") as fd:
             fd.write("# Juju generated - DO NOT EDIT\n{}\n\n"
                      .format(cron_line))
 
@@ -691,15 +693,13 @@ class BaseOVNCentralCharm(charms_openstack.charm.OpenStackCharm):
         """Remove no longer needed NRPE configuration and cronfiles"""
         hostname = nrpe.get_nagios_hostname()
         charm_nrpe = nrpe.NRPE(hostname=hostname)
-
         for svc in self.nrpe_check_services:
             charm_nrpe.remove_check(shortname=svc)
         charm_nrpe.remove_check(shortname="ovn_db_connections")
-
         charm_nrpe.write()
 
         files = [
-            "/etc/cron.d/check_ovn_db_connections",
+            NRPE_CRON_FILE,
             os.path.join(SCRIPTS_DIR, "run_ovn_db_connections_check.py"),
         ]
         for filename in files:

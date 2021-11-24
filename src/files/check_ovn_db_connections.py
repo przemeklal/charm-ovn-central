@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Check OVN DB connections status and alert."""
 
 import os
 
@@ -20,6 +21,7 @@ NAGIOS_ERRORS = {
 
 
 def parse_output():
+    """Read OVN DB status saved in the file and alert."""
     if not os.path.exists(OUTPUT_FILE):
         raise UnknownError(
             "UNKNOWN: {} does not exist (yet?)".format(OUTPUT_FILE)
@@ -29,8 +31,8 @@ def parse_output():
     try_check(check_file_freshness, OUTPUT_FILE)
 
     try:
-        with open(OUTPUT_FILE, "r") as fd:
-            output = fd.read()
+        with open(OUTPUT_FILE, "r") as output_file:
+            output = output_file.read()
     except PermissionError as error:
         raise UnknownError(error)
 
@@ -39,7 +41,7 @@ def parse_output():
             func = NAGIOS_ERRORS[startline]
             raise func(output)
 
-    print("OK: {}".format(output))
+    print(output)
 
 
 if __name__ == "__main__":
