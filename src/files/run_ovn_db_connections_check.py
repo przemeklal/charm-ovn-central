@@ -78,7 +78,7 @@ def check_role_target(connection):
             ),
         )
 
-    return Alert(NAGIOS_STATUS_OK, "{}: no issues".format(uuid))
+    return Alert(NAGIOS_STATUS_OK, "{}: target and role are OK".format(uuid))
 
 
 def check_read_only(connection):
@@ -221,7 +221,7 @@ def aggregate_alerts(alerts):
             )
         )
     if total_crit == 0 and total_warn == 0:
-        status_detail = "no issues"
+        status_detail = "OVN DB connections are normal"
 
     return "{}: {}".format(severity, status_detail)
 

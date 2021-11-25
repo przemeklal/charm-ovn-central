@@ -217,7 +217,7 @@ class TestRunOVNChecks(test_utils.PatchHelper):
             check.Alert(check.NAGIOS_STATUS_OK, "fakeok"),
         ]
         filtered3 = check.aggregate_alerts(alerts3)
-        self.assertEquals(filtered3, "OK: no issues")
+        self.assertEquals(filtered3, "OK: OVN DB connections are normal")
 
     @mock.patch("run_ovn_db_connections_check.check_output")
     def test_is_leader_true(self, mock_check_output):

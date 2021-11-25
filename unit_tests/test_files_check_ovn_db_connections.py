@@ -43,7 +43,9 @@ class TestCheckOVNDBConnections(test_utils.PatchHelper):
     @mock.patch("os.path.exists")
     def test_parse_output_ok(self, mock_exists):
         mock_exists.return_value = True
-        mock_file = mock.mock_open(read_data="OK: no issues")
+        mock_file = mock.mock_open(
+            read_data="OK: OVN DB connections are normal"
+        )
         with mock.patch("builtins.open", mock_file):
             # it shouldn't raise any exceptions
             try:
