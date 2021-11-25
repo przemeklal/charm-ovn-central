@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest.mock as mock
-import charms_openstack.test_utils as test_utils
+from unittest import mock
+from charms_openstack import test_utils
 import check_ovn_db_connections as check
 import nagios_plugin3 as nagios
 

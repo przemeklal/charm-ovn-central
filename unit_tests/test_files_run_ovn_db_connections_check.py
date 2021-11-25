@@ -12,14 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest.mock as mock
+from unittest import mock
 
-import charms_openstack.test_utils as test_utils
+from charms_openstack import test_utils
 
 import run_ovn_db_connections_check as check
 
 
 class TestRunOVNChecks(test_utils.PatchHelper):
+
+    @mock.patch('run_ovn_db_connections_check.write_output_file')
+    @mock.patch('run_ovn_db_connections_check.is_leader')
+    def test_run_checks_not_leader(self, mock_leader, mock_write):
+        mock_leader.return_value = False
+        check.run_checks()
+        mock_write.assert_called_once_with(
+            "OK: no-op (unit is not the DB leader)"
+        )
+
+    @mock.patch('run_ovn_db_connections_check.write_output_file')
+    @mock.patch('run_ovn_db_connections_check.check_output')
+    @mock.patch('run_ovn_db_connections_check.parse_output')
+    @mock.patch('run_ovn_db_connections_check.check_connections')
+    @mock.patch('run_ovn_db_connections_check.aggregate_alerts')
+    @mock.patch('run_ovn_db_connections_check.is_leader')
+    def test_run_checks_leader(self, mock_leader, mock_aggregate, mock_parse,
+                               mock_check, mock_check_output, mock_write):
+        mock_leader.return_value = True
+        mock_aggregate.return_value = "OK: fake status"
+        check.run_checks()
+        mock_write.assert_called_once_with("OK: fake status")
+
     def test_get_uuid(self):
         connection = {"_uuid": ["uuid", "fake-uuid"]}
         uuid = check.get_uuid(connection)
@@ -165,10 +188,6 @@ class TestRunOVNChecks(test_utils.PatchHelper):
               '","other_config","read_only","role","status","target"]}'
         conns = check.parse_output(raw)
         self.assertEquals(len(conns), 2)
-
-    def test_parse_output_error(self):
-        # TODO
-        self.assertTrue(True)
 
     def test_aggregate_alerts(self):
         alerts1 = [

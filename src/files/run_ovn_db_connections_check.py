@@ -237,7 +237,7 @@ def run_checks():
             alerts = check_connections(connections)
             output = aggregate_alerts(alerts)
         else:
-            output = "noop: unit is not the DB leader"
+            output = "OK: no-op (unit is not the DB leader)"
     except CalledProcessError as error:
         output = "UKNOWN: {}".format(error.stdout.decode(errors="ignore"))
 
