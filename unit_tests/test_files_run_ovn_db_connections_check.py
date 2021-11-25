@@ -20,7 +20,6 @@ import run_ovn_db_connections_check as check
 
 
 class TestRunOVNChecks(test_utils.PatchHelper):
-
     def test_get_uuid(self):
         connection = {"_uuid": ["uuid", "fake-uuid"]}
         uuid = check.get_uuid(connection)
@@ -98,27 +97,72 @@ class TestRunOVNChecks(test_utils.PatchHelper):
 
     def test_check_connections_too_many(self):
         connections = [
-            {"_uuid": ["uuid", "fake-uuid-0"], "role": "", "target": "pssl:16642", "read_only": False},
-            {"_uuid": ["uuid", "fake-uuid-1"], "role": "", "target": "pssl:16642", "read_only": False},
-            {"_uuid": ["uuid", "fake-uuid-2"], "role": "ovn-controller","target": "pssl:6642", "read_only": False},
+            {
+                "_uuid": ["uuid", "fake-uuid-0"],
+                "role": "",
+                "target": "pssl:16642",
+                "read_only": False,
+            },
+            {
+                "_uuid": ["uuid", "fake-uuid-1"],
+                "role": "",
+                "target": "pssl:16642",
+                "read_only": False,
+            },
+            {
+                "_uuid": ["uuid", "fake-uuid-2"],
+                "role": "ovn-controller",
+                "target": "pssl:6642",
+                "read_only": False,
+            },
         ]
         alerts = check.check_connections(connections)
-        self.assertIn(check.Alert(check.NAGIOS_STATUS_CRITICAL, "expected 2 connections, got 3"), alerts)
+        self.assertIn(
+            check.Alert(
+                check.NAGIOS_STATUS_CRITICAL, "expected 2 connections, got 3"
+            ),
+            alerts,
+        )
 
     def test_check_connections_too_many_controllers(self):
         connections = [
-            {"_uuid": ["uuid", "fake-uuid-0"], "role": "", "target": "pssl:16642", "read_only": False},
-            {"_uuid": ["uuid", "fake-uuid-1"], "role": "ovn-controller", "target": "pssl:16642", "read_only": False},
-            {"_uuid": ["uuid", "fake-uuid-2"], "role": "ovn-controller","target": "pssl:6642", "read_only": False},
+            {
+                "_uuid": ["uuid", "fake-uuid-0"],
+                "role": "",
+                "target": "pssl:16642",
+                "read_only": False,
+            },
+            {
+                "_uuid": ["uuid", "fake-uuid-1"],
+                "role": "ovn-controller",
+                "target": "pssl:16642",
+                "read_only": False,
+            },
+            {
+                "_uuid": ["uuid", "fake-uuid-2"],
+                "role": "ovn-controller",
+                "target": "pssl:6642",
+                "read_only": False,
+            },
         ]
-        exp1 = check.Alert(check.NAGIOS_STATUS_CRITICAL, "expected 2 connections, got 3")
-        exp2 = check.Alert(check.NAGIOS_STATUS_CRITICAL, "expected 1 ovn-controller connection, got 2")
+        exp1 = check.Alert(
+            check.NAGIOS_STATUS_CRITICAL, "expected 2 connections, got 3"
+        )
+        exp2 = check.Alert(
+            check.NAGIOS_STATUS_CRITICAL,
+            "expected 1 ovn-controller connection, got 2",
+        )
         alerts = check.check_connections(connections)
         self.assertIn(exp1, alerts)
         self.assertIn(exp2, alerts)
 
     def test_parse_output_correct(self):
-        raw = """{"data":[[["uuid","fake-uuid-1"],["map",[]],60000,false,["set",[]],["map",[]],false,"ovn-controller",["map",[]],"pssl:6642"],[["uuid","fake-uuid-2"],["map",[]],60000,false,["set",[]],["map",[]],false,"",["map",[]],"pssl:16642"]],"headings":["_uuid","external_ids","inactivity_probe","is_connected","max_backoff","other_config","read_only","role","status","target"]}"""
+        raw = '{"data":[[["uuid","fake-uuid-1"],["map",[]],60000,false,["set"'\
+              ',[]],["map",[]],false,"ovn-controller",["map",[]],"pssl:6642"]'\
+              ',[["uuid","fake-uuid-2"],["map",[]],60000,false,["set",[]],["m'\
+              'ap",[]],false,"",["map",[]],"pssl:16642"]],"headings":["_uuid"'\
+              ',"external_ids","inactivity_probe","is_connected","max_backoff'\
+              '","other_config","read_only","role","status","target"]}'
         conns = check.parse_output(raw)
         self.assertEquals(len(conns), 2)
 
@@ -134,7 +178,11 @@ class TestRunOVNChecks(test_utils.PatchHelper):
             check.Alert(check.NAGIOS_STATUS_OK, "fakeok"),
         ]
         filtered1 = check.aggregate_alerts(alerts1)
-        self.assertEquals(filtered1, "CRITICAL: critical[1]: ['fakecrit']; warnings[2]: ['fakewarn1', 'fakewarn2']")
+        self.assertEquals(
+            filtered1,
+            "CRITICAL: critical[1]: ['fakecrit']; "
+            "warnings[2]: ['fakewarn1', 'fakewarn2']",
+        )
 
         alerts2 = [
             check.Alert(check.NAGIOS_STATUS_WARNING, "fakewarn1"),
@@ -142,7 +190,9 @@ class TestRunOVNChecks(test_utils.PatchHelper):
             check.Alert(check.NAGIOS_STATUS_OK, "fakeok"),
         ]
         filtered2 = check.aggregate_alerts(alerts2)
-        self.assertEquals(filtered2, "WARNING: warnings[2]: ['fakewarn1', 'fakewarn2']")
+        self.assertEquals(
+            filtered2, "WARNING: warnings[2]: ['fakewarn1', 'fakewarn2']"
+        )
 
         alerts3 = [
             check.Alert(check.NAGIOS_STATUS_OK, "fakeok"),
@@ -150,7 +200,7 @@ class TestRunOVNChecks(test_utils.PatchHelper):
         filtered3 = check.aggregate_alerts(alerts3)
         self.assertEquals(filtered3, "OK: no issues")
 
-    @mock.patch('run_ovn_db_connections_check.check_output')
+    @mock.patch("run_ovn_db_connections_check.check_output")
     def test_is_leader_true(self, mock_check_output):
         mock_check_output.return_value = b"""0123
 Name: OVN_Southbound
@@ -166,7 +216,7 @@ Vote: self
         result = check.is_leader()
         self.assertTrue(result)
 
-    @mock.patch('run_ovn_db_connections_check.check_output')
+    @mock.patch("run_ovn_db_connections_check.check_output")
     def test_is_leader_follower(self, mock_check_output):
         mock_check_output.return_value = b"""0123
 Name: OVN_Southbound
@@ -182,7 +232,7 @@ Vote: self
         result = check.is_leader()
         self.assertFalse(result)
 
-    @mock.patch('run_ovn_db_connections_check.check_output')
+    @mock.patch("run_ovn_db_connections_check.check_output")
     def test_is_leader_no_role(self, mock_check_output):
         mock_check_output.return_value = b"""0123
 Name: OVN_Southbound

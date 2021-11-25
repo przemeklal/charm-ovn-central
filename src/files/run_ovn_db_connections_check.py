@@ -199,11 +199,27 @@ def aggregate_alerts(alerts):
 
     if total_crit > 0:
         severity = "CRITICAL"
-        status_detail = "; ".join(filter(None, [status_detail, "critical[{}]: {}".format(total_crit, msg_crit)]))
+        status_detail = "; ".join(
+            filter(
+                None,
+                [
+                    status_detail,
+                    "critical[{}]: {}".format(total_crit, msg_crit),
+                ],
+            )
+        )
     if total_warn > 0:
         if severity != "CRITICAL":
             severity = "WARNING"
-        status_detail = "; ".join(filter(None, [status_detail, "warnings[{}]: {}".format(total_warn, msg_warn)]))
+        status_detail = "; ".join(
+            filter(
+                None,
+                [
+                    status_detail,
+                    "warnings[{}]: {}".format(total_warn, msg_warn),
+                ],
+            )
+        )
     if total_crit == 0 and total_warn == 0:
         status_detail = "no issues"
 

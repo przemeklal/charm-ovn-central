@@ -538,7 +538,8 @@ class TestOVNCentralCharm(Helper):
             self.add_init_service_checks.assert_has_calls([
                 mock.call().add_init_service_checks(
                     mock.ANY,
-                    ['ovn-northd', 'ovn-ovsdb-server-nb', 'ovn-ovsdb-server-sb'],
+                    ['ovn-northd', 'ovn-ovsdb-server-nb',
+                     'ovn-ovsdb-server-sb'],
                     mock.ANY
                 ),
             ])
@@ -547,10 +548,10 @@ class TestOVNCentralCharm(Helper):
             ])
             mocked_file.__enter__().write.assert_called_once_with(
                 '# Juju generated - DO NOT EDIT\n'
-                '*/5 * * * * root /usr/local/bin/run_ovn_db_connections_check.py '
+                '*/5 * * * * '
+                'root /usr/local/bin/run_ovn_db_connections_check.py '
                 '| logger -p local0.notice\n\n'
             )
-
 
     def test_configure_deferred_restarts(self):
         self.patch_object(

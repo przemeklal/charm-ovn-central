@@ -37,7 +37,7 @@ def parse_output():
     """Read OVN DB status saved in the file and alert."""
     if not os.path.exists(OUTPUT_FILE):
         raise UnknownError(
-            "UNKNOWN: {} does not exist (yet?)".format(OUTPUT_FILE)
+            "UNKNOWN: {} does not exist".format(OUTPUT_FILE)
         )
 
     # Check if file is newer than 10min
